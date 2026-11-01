@@ -67,8 +67,6 @@ json
   "timestamp": "2026-10-22T04:15:00Z"
 }
 
-Используйте код с осторожностью.
-
 **Response Output (200 OK):** 
 
 json
@@ -87,8 +85,6 @@ json
   },
   "user_notification": "Your transaction change of 0.45 TJS has been recorded. Capital is accumulating toward the target threshold of 1.00 kg CO2. Progress updated in-app."
 }
-
-Используйте код с осторожностью.
 
 ### Governance & License
 
