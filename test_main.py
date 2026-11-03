@@ -7,7 +7,7 @@ client = TestClient(app)
 
 
 def test_scenario_a_round_up_63_dirams():
-    # TS Section 3.4: 0.63 TJS should round to 0.64 kg in the UI.
+    # 0.63 TJS should round to 0.64 kg in the UI.
     payload = {
         "transaction_id": f"TX-TEST-A-{uuid4()}",
         "contribution_amount": 0.63,
@@ -22,7 +22,7 @@ def test_scenario_a_round_up_63_dirams():
 
 
 def test_scenario_b_round_up_45_dirams():
-    # TS Section 3.4: 0.45 TJS should round to 0.46 kg in the UI.
+    # 0.45 TJS should round to 0.46 kg in the UI.
     payload = {
         "transaction_id": f"TX-TEST-B-{uuid4()}",
         "contribution_amount": 0.45,
@@ -37,7 +37,7 @@ def test_scenario_b_round_up_45_dirams():
 
 
 def test_idempotency_conflict_protection():
-    # Resubmitting the same transaction must be rejected with HTTP 409.
+    # Repeating the same transaction must return HTTP 409 on the second request.
     payload = {
         "transaction_id": f"TX-DUPLICATE-{uuid4()}",
         "contribution_amount": 0.50,
