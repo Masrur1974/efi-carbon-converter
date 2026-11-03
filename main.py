@@ -166,7 +166,7 @@ async def verify_contribution(request: ContributionRequest):
         )
     else:
         user_notification = (
-            "First 1.00 kg of CO2 successfully verified and sequestered! Your cumulative fractional "
+            f"First 1.00 kg of CO2 successfully verified and sequestered! Your cumulative fractional "
             "change has completed physical carbon extraction under IFRS S2 standards. "
             "Background aggregation remains active."
         )
