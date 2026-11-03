@@ -164,12 +164,14 @@ async def verify_contribution(request: ContributionRequest):
             f"Your transaction change of {request.contribution_amount} {currency_code} has been recorded. "
             "Capital is accumulating toward the target threshold of 1.00 kg CO2. Progress updated in-app."
         )
-    else:
+        else:
         user_notification = (
-            f"First 1.00 kg of CO2 successfully verified and sequestered! Your cumulative fractional "
+            f"First 1.00 kg of CO2 successfully verified and sequestered! Your cumulative fractional {currency_code} "
             "change has completed physical carbon extraction under IFRS S2 standards. "
             "Background aggregation remains active."
         )
+
+
 
     db_repository.save_transaction(
         request.transaction_id,
