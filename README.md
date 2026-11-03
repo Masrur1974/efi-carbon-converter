@@ -91,6 +91,10 @@ json
 * **Status:** Active Global Digital Public Good Review.
 * **Licensing:** This repository is licensed under the terms of the MIT License.
 
+### Additional Materials for DPGA Review
+
+Supplementary project materials, including presentations and supporting documentation, were provided with the DPGA project submission **GID0094451**. DPGA reviewers can refer to the materials associated with this project submission for the full project context.
+
 ### Contact & Collaboration
 
 For sovereign onboarding inquiries, technical validation requests, or sandbox API keys, please contact the Lead Architect: 
