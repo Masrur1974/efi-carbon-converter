@@ -159,7 +159,7 @@ async def verify_contribution(request: ContributionRequest):
     )
     blockchain_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
 
-        if total_buffer < Decimal("1.00"):
+    if total_buffer < Decimal("1.00"):
         user_notification = (
             f"Your transaction change of {request.contribution_amount} {currency_code} has been recorded. "
             "Capital is accumulating toward the target threshold of 1.00 kg CO2. Progress updated in-app."
