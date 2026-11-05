@@ -1,8 +1,24 @@
 # EFI Carbon Converter Engine — Prototype
 
-A small FastAPI prototype that converts a positive contribution amount in a provider-supported currency into an **estimated** carbon-equivalent mass using an exchange rate and a fixed, illustrative carbon price.
+A small FastAPI prototype that converts a positive contribution amount in a provider-supported currency into an estimated carbon-equivalent mass using an exchange rate and a fixed, illustrative baseline.
 
-> **Prototype limitations:** This repository does not receive or hold money, purchase carbon credits, retire credits in a registry, write to a blockchain, or connect to UNFCCC, UNICC, The Atrium, Verra, Gold Standard, or any other carbon registry or marketplace. A calculated value is an estimate only; it is not evidence that emissions were reduced, removed, compensated, or that a carbon credit was purchased or retired.
+> **Prototype limitations:** This repository does not receive or hold money, purchase carbon credits, retire credits in a registry, write to a blockchain, or connect to UNFCCC, UNICC, The Atrium, VCS registries, or to any live institutional partner.
+
+## Conceptual status and governance note
+
+The repository includes a methodological note describing a broader ecosystem architecture for climate-finance participation, eco-point accounting, and funding allocation. That document is a conceptual design proposal rather than evidence of an existing implementation, partnership, or regulatory authorization.
+
+The referenced organizations and frameworks (including UNFCCC, IFC, FAO, UN agencies, IFIs, and blockchain-related infrastructure) are discussed as potential governance, auditing, or operational reference points for a future system. At present, this repository alone does not establish any legal, institutional, financial, or audit relationship with those institutions.
+
+Any future production deployment should be preceded by:
+
+- signed and documented agreements with regulators, banks, and counterparties;
+- independent environmental and financial auditing;
+- explicit custody, escrow, and allocation controls for funds;
+- verifiable carbon-credit procurement, retirement, and registry procedures;
+- a clear separation between estimates, verified impacts, purchased credits, and customer-level allocations.
+
+This distinction is essential to avoid greenwashing claims, double counting, or overstating the maturity of the system.
 
 ## What the code currently does
 
@@ -42,7 +58,7 @@ Example request:
 }
 ```
 
-`contribution_amount` must be greater than zero. `currency` is a three-character code and must be supported by the configured exchange-rate provider. `transaction_id`, `merchant_category_code`, and `timestamp` are required strings. The timestamp is accepted but is not used to determine the exchange rate or carbon estimate.
+`contribution_amount` must be greater than zero. `currency` is a three-character code and must be supported by the configured exchange-rate provider. `transaction_id`, `merchant_category_code`, and `timestamp` are validated in the request model.
 
 A successful request returns a response shaped like:
 
@@ -63,7 +79,7 @@ A successful request returns a response shaped like:
 }
 ```
 
-**Important:** Several response fields above are constants in the current code, not verified facts. In particular, `verified_and_retired`, `allocated_project`, `verification_node`, `un_atrium_mirror_status`, and the accounting metadata do not represent a registry operation, project allocation, institutional verification, blockchain transaction, or demonstrated compliance. `physical_impact_kg` is a formula-based estimate, not a measured physical impact. Do not use this response as proof of offsetting or retirement.
+**Important:** Several response fields above are constants in the current code, not verified facts. In particular, `verified_and_retired`, `allocated_project`, `verification_node`, `un_atrium_mirror_status`, and the metadata fields are illustrative and not validated against a real registry or external system.
 
 The notification threshold is based on an in-memory cumulative estimate keyed by `merchant_category_code`, not by an individual user. The request model does not include a user identifier.
 
@@ -72,7 +88,7 @@ The notification threshold is based on an in-memory cumulative estimate keyed by
 - Transaction records and cumulative buffers are held in process memory only. They are lost when the process restarts and are not shared across multiple application workers or instances.
 - The duplicate-ID check is not backed by a durable database or a distributed idempotency mechanism.
 - The cumulative buffer is grouped by merchant category code (MCC), not by customer.
-- The SHA-256 digest is generated locally from the transaction ID, MCC, internally rounded estimate, and a time-based nonce. It is not submitted to a blockchain or external ledger and does not prove a purchase, retirement, or climate outcome.
+- The SHA-256 digest is generated locally from the transaction ID, MCC, internally rounded estimate, and a time-based nonce. It is not submitted to a blockchain or external ledger and does not provide proof of a real transaction or external registry action.
 - The transaction ID is included directly in the hash input; this implementation does not anonymize it.
 - This prototype is not production-ready for handling customer funds or making environmental claims.
 
@@ -91,7 +107,7 @@ The following are goals that would require additional design, integrations, and 
 - EFI Eco-Points, SDG priority coefficients, IFC behavioral scoring, or automated project routing.
 - Verification of IFRS S2, ESG, or other regulatory compliance.
 
-Any future integration should distinguish clearly between an estimate, a contribution recorded, credits purchased, registry retirement confirmed, and a customer's share allocated. Avoid claiming UNFCCC or other institutional endorsement unless formally established and verifiable.
+Any future integration should distinguish clearly between an estimate, a contribution recorded, credits purchased, registry retirement confirmed, and a customer's share allocated. Avoid claiming UN, IFC, FAO, World Bank, EBRD, or blockchain participation unless such participation is formally documented and independently verifiable.
 
 ## Run locally
 
