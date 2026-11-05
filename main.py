@@ -1,10 +1,11 @@
 import asyncio
 import hashlib
+import json
 import os
 import re
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import httpx
 from fastapi import FastAPI, HTTPException, status
@@ -12,63 +13,135 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="EFI Carbon Fractionator Protocol API",
-    version="1.0.0",
-    description="API converting contributions in provider-supported currencies into fractional carbon impact.",
+    version="1.1.0",
+    description=(
+        "Simulation API for recording contributions, estimating carbon-offset amounts, "
+        "and creating a local hash-chained audit trail. No real purchase or blockchain write occurs."
+    ),
 )
 
-# Carbon price is a mock MVP value. FX rates come from the configured provider.
-# Provider rates are USD-based and cached to reduce network calls.
-EUA_QUOTA_PRICE_EUR = Decimal("86.00")
+# Illustrative simulation price only, not a live quote or an executed market purchase.
+EUA_QUOTA_PRICE_EUR = Decimal("86.00")  # EUR per tonne of CO2e
+PURCHASE_THRESHOLD_KG = Decimal("1.000000")
+SIX_PLACES = Decimal("0.000001")
 FX_RATES_URL = os.getenv("FX_RATES_URL", "https://open.er-api.com/v6/latest/USD")
 FX_CACHE_TTL_SECONDS = int(os.getenv("FX_CACHE_TTL_SECONDS", "3600"))
 _fx_rates_cache: Optional[Tuple[float, Dict[str, Decimal]]] = None
 _fx_rates_lock = asyncio.Lock()
 
 
+def six_places(value: Decimal) -> Decimal:
+    """Quantize ledger values to six decimal places using round-half-up."""
+    return value.quantize(SIX_PLACES, rounding=ROUND_HALF_UP)
+
+
 class InMemoryAppendOnlyRepository:
+    """Process-local simulation ledger; data disappears when the process restarts."""
+
     def __init__(self):
-        self._ledger = {}
-        self._user_buffers = {}
+        self._transactions: Dict[str, dict] = {}
+        self._pools: Dict[Tuple[str, str], dict] = {}
+        self._batches: List[dict] = []
+        self._chain: List[dict] = []
+        self._lock = asyncio.Lock()
 
-    def is_duplicate(self, tx_id: str) -> bool:
-        return tx_id in self._ledger
+    async def record_contribution(self, tx_id: str, record: dict, threshold_kg: Decimal) -> dict:
+        # Atomic duplicate protection and ledger/pool update within this process.
+        async with self._lock:
+            if tx_id in self._transactions:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Duplicate transaction ID; contribution was not recorded again.",
+                )
 
-    def save_transaction(self, tx_id: str, data: dict):
-        self._ledger[tx_id] = data
+            pool_key = (record["region"], record["offset_category"])
+            pool = self._pools.setdefault(
+                pool_key,
+                {"kg": Decimal("0.000000"), "donor_allocations": {}, "contribution_count": 0},
+            )
+            pool["kg"] = six_places(pool["kg"] + record["estimated_offset_kg"])
+            donor_id = record["donor_id"]
+            pool["donor_allocations"][donor_id] = six_places(
+                pool["donor_allocations"].get(donor_id, Decimal("0.000000"))
+                + record["estimated_offset_kg"]
+            )
+            pool["contribution_count"] += 1
 
-    def update_buffer(self, user_id: str, amount_kg: Decimal) -> Decimal:
-        current = self._user_buffers.get(user_id, Decimal("0.00"))
-        new_total = current + amount_kg
-        self._user_buffers[user_id] = new_total
-        return new_total
+            purchase_batch = None
+            if pool["kg"] >= threshold_kg:
+                purchase_batch = {
+                    "batch_id": f"SIM-BATCH-{len(self._batches) + 1:06d}",
+                    "region": pool_key[0],
+                    "offset_category": pool_key[1],
+                    "simulated_purchase_kg": pool["kg"],
+                    "donor_allocations_kg": dict(pool["donor_allocations"]),
+                    "contribution_count": pool["contribution_count"],
+                    "status": "SIMULATED_ONLY_NOT_A_REAL_PURCHASE",
+                }
+                self._batches.append(purchase_batch)
+                pool["kg"] = Decimal("0.000000")
+                pool["donor_allocations"] = {}
+                pool["contribution_count"] = 0
+
+            chain_record = {
+                **record,
+                "simulated_purchase_batch_id": purchase_batch["batch_id"] if purchase_batch else None,
+                "previous_hash": self._chain[-1]["record_hash"] if self._chain else None,
+            }
+            canonical = json.dumps(chain_record, sort_keys=True, separators=(",", ":"))
+            chain_record["record_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            chain_record["ledger_index"] = len(self._chain) + 1
+            self._chain.append(chain_record)
+
+            result = {
+                "record_hash": chain_record["record_hash"],
+                "ledger_index": chain_record["ledger_index"],
+                "pool_kg_remaining": pool["kg"],
+                "purchase_batch": purchase_batch,
+            }
+            self._transactions[tx_id] = {**record, **result}
+            return result
 
 
 db_repository = InMemoryAppendOnlyRepository()
 
 
 class ContributionRequest(BaseModel):
-    transaction_id: str = Field(..., example="TX-2026-9913-AF")
-    contribution_amount: float = Field(..., gt=0, example=0.45)
+    transaction_id: str = Field(..., min_length=1, example="TX-2026-9913-AF")
+    # Decimal input avoids binary floating-point arithmetic for monetary values.
+    contribution_amount: Decimal = Field(..., gt=0, example="0.45")
     currency: str = Field("TJS", min_length=3, max_length=3, example="TJS")
     merchant_category_code: str = Field(..., example="5411")
     timestamp: str = Field(..., example="2026-10-22T04:15:00Z")
+    donor_id: str = Field("anonymous", min_length=1, max_length=128, example="donor-001")
+    region: str = Field("GLOBAL", min_length=2, max_length=32, example="TJ")
+    offset_category: str = Field("GENERAL", min_length=2, max_length=64, example="RENEWABLE_ENERGY")
 
 
 class MetadataBlock(BaseModel):
-    accounting_protocol: str = "IFRS S2 / ESG Compliant"
-    operation_type: str = "Carbon Removal"
+    accounting_protocol: str = "Illustrative simulation; no compliance claim"
+    operation_type: str = "Simulated carbon-offset allocation"
 
 
 class ContributionResponse(BaseModel):
-    status: str = "verified_and_retired"
+    status: str
     transaction_id: str
-    allocated_project: str = "ICE_EUA_Compliance_Dec2026"
-    physical_impact_kg: float
+    allocated_project: str
+    physical_impact_kg: Decimal
     blockchain_hash: str
-    verification_node: str = "EFI-Local-Core-Node-01"
-    un_atrium_mirror_status: str = "ready_for_sync"
-    metadata: MetadataBlock = MetadataBlock()
+    verification_node: str
+    un_atrium_mirror_status: str
+    metadata: MetadataBlock
     user_notification: str
+    simulation_only: bool
+    simulated_purchase_batch_id: Optional[str] = None
+    simulated_purchase_kg: Decimal = Decimal("0.000000")
+    pool_kg_remaining: Decimal
+    amount_eur: Decimal
+    currency: str
+    region: str
+    offset_category: str
+    donor_id: str
 
 
 async def _get_provider_rates() -> Dict[str, Decimal]:
@@ -82,7 +155,6 @@ async def _get_provider_rates() -> Dict[str, Decimal]:
         now = time.monotonic()
         if _fx_rates_cache and now - _fx_rates_cache[0] < FX_CACHE_TTL_SECONDS:
             return _fx_rates_cache[1]
-
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get(FX_RATES_URL)
@@ -92,8 +164,7 @@ async def _get_provider_rates() -> Dict[str, Decimal]:
             if payload.get("result") != "success" or not isinstance(raw_rates, dict):
                 raise ValueError("Invalid exchange-rate response")
             rates = {str(code).upper(): Decimal(str(value)) for code, value in raw_rates.items()}
-            if "USD" not in rates:
-                rates["USD"] = Decimal("1")
+            rates.setdefault("USD", Decimal("1"))
             if "EUR" not in rates or any(value <= 0 for value in rates.values()):
                 raise ValueError("Exchange-rate response is missing valid EUR rates")
             _fx_rates_cache = (time.monotonic(), rates)
@@ -110,7 +181,6 @@ async def get_eur_per_unit(currency_code: str) -> Decimal:
     code = currency_code.upper()
     if not re.fullmatch(r"[A-Z]{3}", code):
         raise HTTPException(status_code=422, detail="Currency must be a three-letter ISO code.")
-
     rates = await _get_provider_rates()
     source_rate = rates.get(code)
     usd_to_eur_rate = rates.get("EUR")
@@ -132,56 +202,78 @@ async def list_currencies():
     "/api/v1/verify-contribution",
     response_model=ContributionResponse,
     status_code=status.HTTP_200_OK,
-    summary="Convert a contribution in a provider-supported currency into carbon impact",
+    summary="Simulate a contribution, offset accumulation, purchase threshold, and hash-chained record",
 )
 async def verify_contribution(request: ContributionRequest):
-    if db_repository.is_duplicate(request.transaction_id):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Transaction double-counting prevented. Duplicate ID detected.",
-        )
-
     currency_code = request.currency.upper()
-    amount = Decimal(str(request.contribution_amount))
     eur_per_unit = await get_eur_per_unit(currency_code)
-    amount_eur = amount * eur_per_unit
 
-    carbon_mass_raw = (amount_eur / EUA_QUOTA_PRICE_EUR) * Decimal("1000")
-    carbon_mass_db = carbon_mass_raw.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
-    carbon_mass_ui = carbon_mass_raw.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    # Monetary values and carbon estimates are quantized to six decimal places.
+    amount = six_places(request.contribution_amount)
+    amount_eur = six_places(amount * eur_per_unit)
+    # kg CO2e = EUR / (EUR per tonne) * 1,000 kg per tonne.
+    estimated_offset_kg = six_places((amount_eur / EUA_QUOTA_PRICE_EUR) * Decimal("1000"))
 
-    total_buffer = db_repository.update_buffer(request.merchant_category_code, carbon_mass_db)
-
-    timestamp_nonce = str(time.time_ns())
-    hash_payload = (
-        f"{request.transaction_id}|{request.merchant_category_code}|"
-        f"{carbon_mass_db}|{timestamp_nonce}"
+    record = {
+        "transaction_id": request.transaction_id,
+        "donor_id": request.donor_id,
+        "merchant_category_code": request.merchant_category_code,
+        "contribution_amount": amount,
+        "currency": currency_code,
+        "amount_eur": amount_eur,
+        "region": request.region.upper(),
+        "offset_category": request.offset_category.upper(),
+        "timestamp": request.timestamp,
+        "estimated_offset_kg": estimated_offset_kg,
+        "reference_price_eur_per_tonne": EUA_QUOTA_PRICE_EUR,
+        "simulation_only": True,
+    }
+    ledger_result = await db_repository.record_contribution(
+        request.transaction_id, record, PURCHASE_THRESHOLD_KG
     )
-    blockchain_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
 
-    if total_buffer < Decimal("1.00"):
-        user_notification = (
-            f"Your transaction change of {request.contribution_amount} {currency_code} has been recorded. "
-            "Capital is accumulating toward the target threshold of 1.00 kg CO2. Progress updated in-app."
+    batch = ledger_result["purchase_batch"]
+    if batch:
+        status_text = "simulated_purchase_threshold_reached"
+        notification = (
+            f"Simulation only: the {request.region.upper()}/{request.offset_category.upper()} pool reached "
+            f"{batch['simulated_purchase_kg']:.6f} kg CO2e. A simulated batch was recorded; "
+            "no money was spent and no real offset was purchased or retired."
         )
+        batch_id = batch["batch_id"]
+        batch_kg = batch["simulated_purchase_kg"]
     else:
-        user_notification = (
-            f"First 1.00 kg of CO2 successfully verified and sequestered! Your cumulative fractional {currency_code} "
-            "change has completed physical carbon extraction under IFRS S2 standards. "
-            "Background aggregation remains active."
+        status_text = "simulated_contribution_recorded"
+        notification = (
+            f"Simulation only: {amount:.6f} {currency_code} was recorded as EUR {amount_eur:.6f}, "
+            f"equivalent to an estimated {estimated_offset_kg:.6f} kg CO2e at the illustrative price. "
+            f"The {request.region.upper()}/{request.offset_category.upper()} pool has "
+            f"{ledger_result['pool_kg_remaining']:.6f} kg toward the {PURCHASE_THRESHOLD_KG:.6f} kg threshold. "
+            "No money was spent and no real offset was purchased or retired."
         )
-
-
-
-
-    db_repository.save_transaction(
-        request.transaction_id,
-        {"id": request.transaction_id, "impact_kg": float(carbon_mass_db), "hash": blockchain_hash},
-    )
+        batch_id = None
+        batch_kg = Decimal("0.000000")
 
     return ContributionResponse(
+        status=status_text,
         transaction_id=request.transaction_id,
-        physical_impact_kg=float(carbon_mass_ui),
-        blockchain_hash=blockchain_hash,
-        user_notification=user_notification,
+        allocated_project=f"SIMULATED:{request.region.upper()}:{request.offset_category.upper()}",
+        physical_impact_kg=estimated_offset_kg,
+        blockchain_hash=ledger_result["record_hash"],
+        verification_node="EFI-LOCAL-SIMULATION-NODE",
+        un_atrium_mirror_status="NOT_CONNECTED_SIMULATION_ONLY",
+        metadata=MetadataBlock(),
+        user_notification=notification,
+        simulation_only=True,
+        simulated_purchase_batch_id=batch_id,
+        simulated_purchase_kg=batch_kg,
+        pool_kg_remaining=ledger_result["pool_kg_remaining"],
+        amount_eur=amount_eur,
+        currency=currency_code,
+        region=request.region.upper(),
+        offset_category=request.offset_category.upper(),
+        donor_id=request.donor_id,
     )
+
+
+__all__ = ["app"]
