@@ -1,0 +1,50 @@
+METHODOLOGICAL PROTOCOL FOR CALCULATING ECO-POINTS OF THE EFI SYSTEM (ECO-FINANCE INFRASTRUCTURE)
+Global Digital Standard for Climate Finance and Banking Loyalty
+Project Author and Chief Financial Architect: Masrur Azizov
+Email: masrur.azizov@gmail.com
+Geography of Pilot Deployment: Dushanbe, Republic of Tajikistan | The project is fully scalable to a global level and ready for international deployment
+Official Methodological Basis of Calculations: Baseline indicators and methodologies of the United Nations Framework Convention on Climate Change (UNFCCC), International Finance Corporation (IFC Performance Standards), global indicators of the UN Sustainable Development Goals (SDG Indicators Framework) under the auspices of the Food and Agriculture Organization of the United Nations (FAO).
+________________________________________
+1. ESSENCE AND PHILOSOPHY OF THE PROJECT
+The EFI project addresses a fundamental problem of the global climate market: the isolation of ordinary citizens from sustainability programs due to high entry barriers and distrust in traditional funds.
+EFI is a ready-to-implement infrastructure fintech module embedded via an application programming interface into the applications of commercial banks and mobile operators. It automatically aggregates micro-liquidity from the population (rounding up change during daily purchases) and instantly converts it into physical, verified metrics of planet restoration.
+At the same time, the citizen's environmental contribution does not disappear as charity, but turns into their personal financial asset (EFI eco-points), which optimizes their credit rating and lowers bank interest rates.
+
+2. LEGAL AND TRANSACTIONAL ARCHITECTURE (UN RISK-FREE MODEL)
+To completely eliminate risks of greenwashing, corruption, and doubts about credibility, the movement of funds is entirely isolated from the accounts of the fintech holding and is based on intergovernmental mechanisms of the UN and the International Finance Corporation (IFC).
+•	Deployment Directive (Project Software Document): Deployment is executed based on the Project Software Document signed by the UN Resident Coordinator, the Government, and the National Bank. This provides partner banks with full regulatory compliance and a green light.
+•	Trusted Custodian Bank: Collected funds are accumulated in a dedicated, locked escrow account at an authorized agent bank. The money does not belong to EFI.
+•	Targeted Allocation: Once a month, the Steering Committee (UN and the Regulator) transfers the pool of funds to the accounts of specific programs under strict audit by international companies.
+•	Holding Monetization: From this same fund, the EFI holding officially receives a fixed percentage for technical support of transactional channels and distributed ledgers.
+3. END-TO-END IT INTEGRATION INTO THE UN INFRASTRUCTURE
+At the moment of a transaction, three IT protocols are triggered simultaneously on UN servers:
+•	Protocol for Real-Time Fiat-to-Carbon Equivalent Conversion (on the servers of the UN International Computing Centre): Connects via an application programming interface with international climate pools and calculates the exact volume of carbon based on current market quotes.
+•	Dynamic Sustainable Development Goals Matching System: Switches financing targets under the mandate of a specific country UN agency (Food and Agriculture Organization of the United Nations — glaciers and land, UNICEF — education, UNDP — green cities) without changing the core program code.
+•	Double-Counting Protection Protocol (Atrium Blockchain Network, UN Department of Economic and Social Affairs, New York): Encrypts a depersonalized transaction identifier and permanently embeds it into the private UN blockchain network, making asset duplication mathematically impossible.
+4. REAL TRANSACTIONAL CASE AND RATING EVALUATION METHODOLOGY
+•	Baseline Simulation Parameters (based on official Bloomberg quotes):
+Market Carbon Quote (Bloomberg / EU ETS): 89.20 Euros per 1 ton of CO2 (which equals 0.0892 Euros per 1 kg).
+Current Exchange Rates (National Bank): 1 Euro = 10.00 somoni (ratio for clean calculation), 1 somoni = 0.10 Euros.
+Borrower Behavior in Tajikistan: 10 automatic round-ups of 0.90 somoni each per month. Total monthly contribution amounted to 9 somoni (equivalent to 0.90 Euros).
+•	Mathematical Calculation:
+Physical Volume (M): 0.90 Euros / 0.0892 Euros (market price per kg) = 10.09 kg of verified CO2 (preserved glacial ice or premium category absorbed carbon, verified according to UNFCCC environmental standards).
+•	Calculation of EFI Rating Eco-Points:
+Points are awarded according to the base formula recognized by International Finance Corporation (IFC) standards:
+Eco-Point = (M * K) * S
+Where:
+M (Carbon Mass): 1.009 kg per one round-up (on average for 10 transactions).
+K (UN/FAO Priority Coefficient): 1.5 (Pamir Glaciers program — highest environmental priority in Tajikistan according to UN SDG indicators).
+S (IFC Behavioral Stability Index): 1.2 (automatic systemic round-up, confirming ideal daily discipline of the user and their digital engagement).
+Calculation for a single transaction: (1.009 kg * 1.5 * 1.2) = 1.81 EFI points.
+Total cumulative calculation for the month across all 10 transactions: Sum of Eco-Points = 10 * 1.81 = 18.16 EFI points.
+5. BENEFIT FOR COMMERCIAL BANKS: INTEREST RATE REDUCTION MECHANICS
+Why should a bank lower rates for clients who have accumulated points? This is a purely economic calculation tied to the cost of targeted funding from international financial institutions (IFIs).
+1.	Access to Cheap Money of the Highest League: International financial institutions (EBRD, IFC, World Bank) issue long-term targeted credit lines to commercial banks at a minimal 4-7% per annum in foreign currency. However, these resources can only be obtained upon strictly proving the green status of the credit portfolio according to IFC and World Bank standards.
+2.	How the Bank Uses the System: Retail clients accumulate points. When a client requests a rate reduction on an installment plan by 0.5%-1.0% or the bank writes off a small credit under the protocol for closing minor outstanding balances (credit tails up to 5 somoni), an asset exchange occurs. The client's points are deducted and transferred to the bank's Corporate Green Treasury.
+3.	Bank's Super-Profit: The bank presents this verified blockchain pool of points to the International Finance Corporation and EBRD and withdraws multi-million credit lines under a minimal interest rate without excessive bureaucracy. Due to the drop in the cost of money, the bank easily gives the retail client a 1% discount, protects itself from defaults (thanks to the disciplined eco-base), and keeps a high net margin for itself.
+Retention Effect Within the Ecosystem: The client will never leave for a competitor bank because upon switching, their accumulated green capital will be reset to zero, and they will completely lose the right to credit discounts and automatic write-offs of small debts.
+6. INTERNATIONAL SCALABILITY AND MODULAR POTENTIAL
+The EFI platform is designed not as local software for a single market, but as a universal scalable protocol for automating sustainable finance in developing countries.
+•	Scalability of the Financial Core: Porting the system to the portfolios of standard debit and credit cards of international payment systems ensures instant exponential growth in transactional volume.
+•	Global Technological Blueprint: Due to the fact that the baseline mathematics of carbon share distribution and integration gateways remain unchanged, the architecture acts as a turnkey modular solution for rapid deployment through commercial banks and telecom operators anywhere in the world.
+•	Principle of Marginal Returns: The international structure allows directing global capital flows directly to regions where they yield the highest environmental return — including the glaciers of Central Asia and critical ecosystems of emerging markets.
