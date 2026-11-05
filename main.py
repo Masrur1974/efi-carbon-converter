@@ -266,7 +266,7 @@ async def verify_contribution(request: ContributionRequest):
             f"equivalent to an estimated {estimated_offset_kg:.6f} kg CO2e at the illustrative price. "
             f"The {request.region.strip().upper()}/{request.offset_category.strip().upper()} pool has "
             f"{ledger_result['pool_kg_remaining']:.6f} kg toward the {PURCHASE_THRESHOLD_KG:.6f} kg threshold. "
-            "No money was spent and no real offset was purchased or retired."
+            "no money was spent and no real offset was purchased or retired."
         )
         batch_id = None
         batch_kg = Decimal("0.000000")
