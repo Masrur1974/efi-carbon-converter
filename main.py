@@ -35,6 +35,16 @@ def six_places(value: Decimal) -> Decimal:
     return value.quantize(SIX_PLACES, rounding=ROUND_HALF_UP)
 
 
+def normalize_currency_code(currency_code: str) -> str:
+    """Normalize ISO currency codes for validation and conversion."""
+    if currency_code is None:
+        raise HTTPException(status_code=422, detail="Currency is required.")
+    code = currency_code.strip().upper()
+    if not re.fullmatch(r"[A-Z]{3}", code):
+        raise HTTPException(status_code=422, detail="Currency must be a three-letter ISO code.")
+    return code
+
+
 class InMemoryAppendOnlyRepository:
     """Process-local simulation ledger; data disappears when the process restarts."""
 
@@ -178,9 +188,7 @@ async def _get_provider_rates() -> Dict[str, Decimal]:
 
 async def get_eur_per_unit(currency_code: str) -> Decimal:
     """Return EUR per one unit of a currency listed by the configured provider."""
-    code = currency_code.upper()
-    if not re.fullmatch(r"[A-Z]{3}", code):
-        raise HTTPException(status_code=422, detail="Currency must be a three-letter ISO code.")
+    code = normalize_currency_code(currency_code)
     rates = await _get_provider_rates()
     source_rate = rates.get(code)
     usd_to_eur_rate = rates.get("EUR")
@@ -188,6 +196,11 @@ async def get_eur_per_unit(currency_code: str) -> Decimal:
         raise HTTPException(
             status_code=422,
             detail=f"Currency {code} is not supported by the configured exchange-rate provider.",
+        )
+    if source_rate <= 0 or usd_to_eur_rate <= 0:
+        raise HTTPException(
+            status_code=503,
+            detail="Exchange rates are temporarily unavailable. Please try again.",
         )
     return usd_to_eur_rate / source_rate
 
@@ -205,7 +218,7 @@ async def list_currencies():
     summary="Simulate a contribution, offset accumulation, purchase threshold, and hash-chained record",
 )
 async def verify_contribution(request: ContributionRequest):
-    currency_code = request.currency.upper()
+    currency_code = normalize_currency_code(request.currency)
     eur_per_unit = await get_eur_per_unit(currency_code)
 
     # Monetary values and carbon estimates are quantized to six decimal places.
@@ -216,27 +229,25 @@ async def verify_contribution(request: ContributionRequest):
 
     record = {
         "transaction_id": request.transaction_id,
-        "donor_id": request.donor_id,
+        "donor_id": request.donor_id.strip(),
         "merchant_category_code": request.merchant_category_code,
         "contribution_amount": amount,
         "currency": currency_code,
         "amount_eur": amount_eur,
-        "region": request.region.upper(),
-        "offset_category": request.offset_category.upper(),
+        "region": request.region.strip().upper(),
+        "offset_category": request.offset_category.strip().upper(),
         "timestamp": request.timestamp,
         "estimated_offset_kg": estimated_offset_kg,
         "reference_price_eur_per_tonne": EUA_QUOTA_PRICE_EUR,
         "simulation_only": True,
     }
-    ledger_result = await db_repository.record_contribution(
-        request.transaction_id, record, PURCHASE_THRESHOLD_KG
-    )
+    ledger_result = await db_repository.record_contribution(request.transaction_id, record, PURCHASE_THRESHOLD_KG)
 
     batch = ledger_result["purchase_batch"]
     if batch:
         status_text = "simulated_purchase_threshold_reached"
         notification = (
-            f"Simulation only: the {request.region.upper()}/{request.offset_category.upper()} pool reached "
+            f"Simulation only: the {request.region.strip().upper()}/{request.offset_category.strip().upper()} pool reached "
             f"{batch['simulated_purchase_kg']:.6f} kg CO2e. A simulated batch was recorded; "
             "no money was spent and no real offset was purchased or retired."
         )
@@ -247,7 +258,7 @@ async def verify_contribution(request: ContributionRequest):
         notification = (
             f"Simulation only: {amount:.6f} {currency_code} was recorded as EUR {amount_eur:.6f}, "
             f"equivalent to an estimated {estimated_offset_kg:.6f} kg CO2e at the illustrative price. "
-            f"The {request.region.upper()}/{request.offset_category.upper()} pool has "
+            f"The {request.region.strip().upper()}/{request.offset_category.strip().upper()} pool has "
             f"{ledger_result['pool_kg_remaining']:.6f} kg toward the {PURCHASE_THRESHOLD_KG:.6f} kg threshold. "
             "No money was spent and no real offset was purchased or retired."
         )
@@ -257,7 +268,7 @@ async def verify_contribution(request: ContributionRequest):
     return ContributionResponse(
         status=status_text,
         transaction_id=request.transaction_id,
-        allocated_project=f"SIMULATED:{request.region.upper()}:{request.offset_category.upper()}",
+        allocated_project=f"SIMULATED:{request.region.strip().upper()}:{request.offset_category.strip().upper()}",
         physical_impact_kg=estimated_offset_kg,
         blockchain_hash=ledger_result["record_hash"],
         verification_node="EFI-LOCAL-SIMULATION-NODE",
@@ -270,9 +281,9 @@ async def verify_contribution(request: ContributionRequest):
         pool_kg_remaining=ledger_result["pool_kg_remaining"],
         amount_eur=amount_eur,
         currency=currency_code,
-        region=request.region.upper(),
-        offset_category=request.offset_category.upper(),
-        donor_id=request.donor_id,
+        region=request.region.strip().upper(),
+        offset_category=request.offset_category.strip().upper(),
+        donor_id=request.donor_id.strip(),
     )
 
 
