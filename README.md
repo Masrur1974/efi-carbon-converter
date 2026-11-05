@@ -1,105 +1,133 @@
-### Eco-Finance Infrastructure (EFI) Carbon Converter Engine
+# EFI Carbon Converter Engine — Prototype
 
-An open-source, production-grade microservice executing real-time fiat-to-carbon liquidation, asset normalization, and SHA-256 cryptographic fractional locking. This repository functions as a validated Digital Public Good blueprint ready for cross-border institutional scaling. 
+A small FastAPI prototype that converts a positive contribution amount in a provider-supported currency into an **estimated** carbon-equivalent mass using an exchange rate and a fixed, illustrative carbon price.
 
-### Strategic Overview
+> **Prototype limitations:** This repository does not receive or hold money, purchase carbon credits, retire credits in a registry, write to a blockchain, or connect to UNFCCC, UNICC, The Atrium, Verra, Gold Standard, or any other carbon registry or marketplace. A calculated value is an estimate only; it is not evidence that emissions were reduced, removed, compensated, or that a carbon credit was purchased or retired.
 
-The EFI Carbon Converter Engine solves a structural bottleneck within the global Voluntary Carbon Market. Traditional climate registries process carbon credits exclusively in bulk wholesale lots (1 tCO2e), effectively locking out retail consumers and commercial banking micro-liquidity due to severe micro-accounting barriers. 
+## What the code currently does
 
-This protocol operates as a secure API infrastructure overlay. It aggregates fragmented retail residual change (such as financial round-ups) from day-to-day transactions and immediately fractionalizes it into verified physical climate mitigation metrics (kilograms of CO2) based on real-time spot pricing. 
+- Exposes a FastAPI application with two endpoints:
+  - `GET /api/v1/currencies` fetches supported currency codes from the configured exchange-rate provider.
+  - `POST /api/v1/verify-contribution` validates a contribution request, converts its amount to EUR, estimates a CO₂-equivalent mass, calculates a SHA-256 digest, and returns a JSON response.
+- Fetches USD-based foreign-exchange rates from `FX_RATES_URL` (default: `https://open.er-api.com/v6/latest/USD`) and caches them for `FX_CACHE_TTL_SECONDS` (default: 3600 seconds).
+- Uses `86.00 EUR per tonne` as a fixed illustrative input (`EUA_QUOTA_PRICE_EUR`). This is **not** a live carbon-market quote and is not connected to a specific offset project or supplier.
+- Rounds the internal mass value to six decimal places and the API's displayed `physical_impact_kg` value to two decimal places.
+- Rejects a transaction ID already seen by the current application process with HTTP 409.
 
-### Core SDGs Aligned
+The conversion is:
 
-* **SDG 2 (Zero Hunger) & SDG 15 (Life on Land):** Dynamic financial routing to glacier preservation, desertification mitigation, and smallholder farmer support.
-* **SDG 11 (Sustainable Cities and Communities):** Automated retail-driven liquidity distribution for urban greening and eco-infrastructure overlays.
-* **SDG 13 (Climate Action):** Mitigating cross-border environmental levies (such as EU CBAM compliance) via transparent, localized origin offsetting matrices.
+```text
+estimated_kg = (contribution_amount × EUR_per_currency_unit / 86.00 EUR_per_tonne) × 1,000 kg_per_tonne
+```
 
-### Mathematical Core & Methodology
+This calculation is only a price-based estimate. It does not measure a project's climate impact or prove that the corresponding quantity exists as a credit.
 
-The engine calculates physical environmental impacts and alternative ESG consumer points using verified intergovernmental data frameworks, aligning natively with UNFCCC baselines, Article 6.4 of the Paris Agreement, and IFC Performance Standards. 
+## API
 
-### 1. Carbon Mass Fractionalization (M)
+### `GET /api/v1/currencies`
 
-Aggregated fiat change is normalized into Euro equivalents (VCM baseline currency) and evaluated against clearing spot market metrics to allocate an exact multi-decimal sub-unit mass of carbon: 
+Returns the currency codes in the configured provider response, with USD as the base currency. If the provider is unavailable, the endpoint returns HTTP 503.
 
-M = (Fiat Amount in EUR / Spot Market Carbon Price per Tonne in EUR) * 1000 kg 
+### `POST /api/v1/verify-contribution`
 
-### 2. IFC-Compliant Eco-Points Formulation
+Example request:
 
-To convert charity friction into a personal financial asset, the system generates non-inflationary EFI Eco-Points to optimize individual consumer alternative credit scoring matrices: 
-
-Eco-Point = (M * K) * S 
-
-* **M (Carbon Mass):** Calculated fractional weight of sequestered CO2 in kilograms.
-* **K (UN SDG Priority Coefficient):** Dynamic weight mapped to localized urgent environmental crises (e.g., 1.5 for the Pamir Glaciers Preservation Program under FAO indicators).
-* **S (IFC Behavioral Stability Index):** Value multiplier set to 1.2 for automated, recurring background round-up activities, confirming long-term user retention.
-
-### Security & Anti-Double-Counting Architecture
-
-To prevent greenwashing, asset duplication, and settlement manipulation, the engine runs a strict three-tier verification mechanism: 
-
-1. **Wholesale Retirement Automation:** Micro-liquidity is aggregated within automated escrow accounts until it reaches wholesale thresholds, triggering a permanent "Retired" state within international carbon registries (Verra / Gold Standard).
-2. **Cryptographic Fractional Locking (Layer-2):** Every fractionated retail transaction is hashed via SHA-256 alongside the anonymized Transaction ID, a Merchant Category Code (MCC), and a high-precision timestamp nonce, blocking asset reuse at the database level.
-3. **Sovereign Node Mirroring:** The state machine routes transaction ledger logs via secure API gateways directly to the United Nations International Computing Centre nodes, anchoring finalized cryptographic blocks onto The Atrium Blockchain Network under the direct administration of UN DESA (New York). Host financial integrations maintain zero write-privileges over central validation layers.
-
-### Repository Structure & Code Architecture
-
-This repository contains a fully working prototype of the core mathematical framework, structured as an asynchronous microservice: 
-
-* **main.py:** Built on FastAPI, handling high-throughput, multi-currency routing (TJS to EUR mapping), automated computing matrices, and structural metadata attachment for IFRS S2 compliance.
-* **test_main.py:** Automated end-to-end pytest scenarios enforcing validation of precise micro-monetary rounding rules (Decimal typing layers) and validating duplicate mitigation filters (HTTP 409 Conflict triggers).
-
-### API Endpoint Verification (FastAPI Pipeline)
-
-### POST /api/v1/verify-contribution
-
-Executes real-time token fractionation and updates cumulative user metadata buffers. 
-
-**Request Payload:** 
-
-json
-
+```json
 {
-  "transaction_id": "TX-2026-9913-AF",
+  "transaction_id": "TX-EXAMPLE-001",
   "contribution_amount": 0.45,
   "currency": "TJS",
   "merchant_category_code": "5411",
   "timestamp": "2026-10-22T04:15:00Z"
 }
+```
 
-**Response Output (200 OK):** 
+`contribution_amount` must be greater than zero. `currency` is a three-character code and must be supported by the configured exchange-rate provider. `transaction_id`, `merchant_category_code`, and `timestamp` are required strings. The timestamp is accepted but is not used to determine the exchange rate or carbon estimate.
 
-json
+A successful request returns a response shaped like:
 
+```json
 {
   "status": "verified_and_retired",
-  "transaction_id": "TX-2026-9913-AF",
+  "transaction_id": "TX-EXAMPLE-001",
   "allocated_project": "ICE_EUA_Compliance_Dec2026",
   "physical_impact_kg": 0.46,
-  "blockchain_hash": "8f32b7a3a9b1c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9",
+  "blockchain_hash": "<64-character SHA-256 digest>",
   "verification_node": "EFI-Local-Core-Node-01",
   "un_atrium_mirror_status": "ready_for_sync",
   "metadata": {
     "accounting_protocol": "IFRS S2 / ESG Compliant",
     "operation_type": "Carbon Removal"
   },
-  "user_notification": "Your transaction change of 0.45 TJS has been recorded. Capital is accumulating toward the target threshold of 1.00 kg CO2. Progress updated in-app."
+  "user_notification": "..."
 }
+```
 
-### Governance & License
+**Important:** Several response fields above are constants in the current code, not verified facts. In particular, `verified_and_retired`, `allocated_project`, `verification_node`, `un_atrium_mirror_status`, and the accounting metadata do not represent a registry operation, project allocation, institutional verification, blockchain transaction, or demonstrated compliance. `physical_impact_kg` is a formula-based estimate, not a measured physical impact. Do not use this response as proof of offsetting or retirement.
 
-* **Status:** Active Global Digital Public Good Review.
-* **Licensing:** This repository is licensed under the terms of the MIT License.
+The notification threshold is based on an in-memory cumulative estimate keyed by `merchant_category_code`, not by an individual user. The request model does not include a user identifier.
 
-### Additional Materials for DPGA Review
+## Current storage and security limitations
 
-Supplementary project materials, including presentations and supporting documentation, were provided with the DPGA project submission **GID0094451**. DPGA reviewers can refer to the materials associated with this project submission for the full project context.
+- Transaction records and cumulative buffers are held in process memory only. They are lost when the process restarts and are not shared across multiple application workers or instances.
+- The duplicate-ID check is not backed by a durable database or a distributed idempotency mechanism.
+- The cumulative buffer is grouped by merchant category code (MCC), not by customer.
+- The SHA-256 digest is generated locally from the transaction ID, MCC, internally rounded estimate, and a time-based nonce. It is not submitted to a blockchain or external ledger and does not prove a purchase, retirement, or climate outcome.
+- The transaction ID is included directly in the hash input; this implementation does not anonymize it.
+- This prototype is not production-ready for handling customer funds or making environmental claims.
 
-### Contact & Collaboration
+## Not implemented
 
-For sovereign onboarding inquiries, technical validation requests, or sandbox API keys, please contact the Lead Architect: 
+The following are goals that would require additional design, integrations, and validation; they are not implemented in this repository:
 
-* **Project Founder:** Masrur Azizov
-* **Email:** masrur.azizov@gmail.com
-* **Location:** Dushanbe, Republic of Tajikistan
-* **Status:** Open for International Advisory Board Engagement & Institutional Pilots.
+- Payment collection, custody, escrow, refunds, or customer-specific money balances.
+- Durable customer and transaction ledgers.
+- Live project-specific carbon-credit quotes, supplier selection, purchase orders, or settlement.
+- Registry issuance, transfer, cancellation, or retirement of credits.
+- Fractional allocation of a retired batch to individual customers.
+- UNFCCC Article 6.2 or Article 6.4 authorization, corresponding adjustments, or registry integration.
+- Blockchain transactions, smart contracts, Merkle proofs, or public audit records.
+- UNICC or The Atrium integrations.
+- EFI Eco-Points, SDG priority coefficients, IFC behavioral scoring, or automated project routing.
+- Verification of IFRS S2, ESG, or other regulatory compliance.
+
+Any future integration should distinguish clearly between an estimate, a contribution recorded, credits purchased, registry retirement confirmed, and a customer's share allocated. Avoid claiming UNFCCC or other institutional endorsement unless formally established and verifiable.
+
+## Run locally
+
+Install dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Start the API:
+
+```bash
+uvicorn main:app --reload
+```
+
+Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+
+Run tests:
+
+```bash
+pytest -q
+```
+
+The tests mock exchange rates for deterministic conversion checks; they do not test live offset-market pricing, carbon-credit purchases, registry retirement, or blockchain behavior.
+
+## Configuration
+
+- `FX_RATES_URL`: exchange-rate provider URL (default: `https://open.er-api.com/v6/latest/USD`).
+- `FX_CACHE_TTL_SECONDS`: exchange-rate cache duration in seconds (default: `3600`).
+
+## Repository contents
+
+- `main.py` — FastAPI application and prototype calculations.
+- `test_main.py` — API tests using mocked exchange rates.
+- `requirements.txt` — Python dependencies.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
