@@ -98,7 +98,13 @@ class InMemoryAppendOnlyRepository:
                 "simulated_purchase_batch_id": purchase_batch["batch_id"] if purchase_batch else None,
                 "previous_hash": self._chain[-1]["record_hash"] if self._chain else None,
             }
-            canonical = json.dumps(chain_record, sort_keys=True, separators=(",", ":"))
+            # Decimal values are encoded as strings so hashing is deterministic and JSON-safe.
+            canonical = json.dumps(
+                chain_record,
+                sort_keys=True,
+                separators=(",", ":"),
+                default=str,
+            )
             chain_record["record_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
             chain_record["ledger_index"] = len(self._chain) + 1
             self._chain.append(chain_record)
